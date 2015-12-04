@@ -3,7 +3,6 @@ import java.sql.{Connection, DriverManager, ResultSet, Timestamp}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 import org.apache.spark.sql._
-import scala.collection.mutable.MutableList
 
 object Orders {
   def main(args: Array[String]) {
@@ -43,13 +42,7 @@ object Orders {
       )
     )
 
-    var processed = MutableList[Int]()
     for (order <- ordersLastMin) {
-      println("Processing OrderId: " + order("order_id"))
-
-      if (processed.indexOf(order("order_id")) > 0) {
-        println(" Order already processed")
-      } else {
         var redshift = DriverManager.getConnection(redshiftUrl,redshiftUser,redshiftPassword)
         var delete = redshift.prepareStatement("DELETE FROM orders3 WHERE order_detail_id = ?")
         delete.setInt(1, order("order_detail_id").toString.toInt)
@@ -84,8 +77,6 @@ object Orders {
         insert.setFloat(14, vatValue)
         insert.setTimestamp(15, timestamp)
         insert.executeUpdate()
-        processed += order("order_id").toString.toInt
-      }
     }
   }
 }
