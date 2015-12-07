@@ -4,6 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
+import com.secretsales.analytics.RedShift
 
 object Orders {
   def main(args: Array[String]) {
@@ -19,8 +20,11 @@ object Orders {
     val redshiftUrl = sys.env("REDSHIFT_HOST")
     val redshiftUser = sys.env("REDSHIFT_USER")
     val redshiftPassword = sys.env("REDSHIFT_PASS")
-    val AWS_KEY = sys.env("AWS_ACCESS_KEY_ID")
-    val AWS_SECRET = sys.env("AWS_SECRET_ACCESS_KEY")
+    val AWSKey = sys.env("AWS_ACCESS_KEY_ID")
+    val AWSSecret = sys.env("AWS_SECRET_ACCESS_KEY")
+
+    val timestamp: Long = System.currentTimeMillis / 1000
+    val S3Path = "secretsales-analytics/RedShift/Load/Orders2/"+timestamp
 
     val ordersLastMin = new JdbcRDD(sc,
       () => DriverManager.getConnection(mysqlUrl,mysqlUser,mysqlPassword),
@@ -44,8 +48,9 @@ object Orders {
       )
     )
 
-    val timestamp: Long = System.currentTimeMillis / 1000
 
+
+    // create schema map
     val schema = StructType(Array(
       StructField("order_detail_id",IntegerType,true),
       StructField("order_id",IntegerType,true),
@@ -64,17 +69,14 @@ object Orders {
       StructField("created",TimestampType,true)
     ))
 
+    // convert to DataFrame
     val DF = sqlContext.createDataFrame(ordersLastMin, schema)
-    val S3Url = "secretsales-analytics/RedShift/Load/Orders/"+timestamp
-
     DF.write
       .format("com.databricks.spark.csv")
       .option("header", "false")
-      .save("s3n://" + S3Url)
+      .save("s3n://" + S3Path)
 
-    var redshift = DriverManager.getConnection(redshiftUrl,redshiftUser,redshiftPassword)
-    var sql = "COPY orders3 FROM 's3://"+S3Url+"/part-' credentials 'aws_access_key_id="+AWS_KEY+";aws_secret_access_key="+AWS_SECRET+"' csv"
-    var insert = redshift.prepareStatement(sql)
-    insert.executeUpdate()
+    val RedShift = new RedShift(redshiftUrl, redshiftUser, redshiftPassword, AWSKey, AWSSecret)
+    RedShift.CopyCSVFromS3("orders3", S3Path+"/part-")
   }
 }
