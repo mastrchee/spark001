@@ -1,6 +1,6 @@
-name := "Orders"
+name := "MySQLSync"
 
-version := "4.1.0"
+version := "0.1.0"
 
 scalaVersion := "2.10.5"
 
