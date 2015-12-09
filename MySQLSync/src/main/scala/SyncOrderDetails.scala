@@ -45,10 +45,10 @@ object SyncOrderDetails {
     //   )).load()
 
     // get data
-    val ordersLastMin = new JdbcRDD(sparkContext,
+    val data = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
       "SELECT od.order_detail_id, o.order_id, od.product_id, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(p.store_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added FROM order_details od INNER JOIN orders o ON od.order_id = o.order_id LEFT JOIN products p ON od.product_id = p.id WHERE od.order_detail_id > "+maxId+" LIMIT ?, ?",
-      0, 9999, 10, r => Row(
+      0, 10000, 100, r => Row(
         r.getInt("order_detail_id"),
         r.getInt("order_id"),
         r.getInt("product_id"),
@@ -75,7 +75,7 @@ object SyncOrderDetails {
     ))
 
     // convert to DataFrame
-    val DF = sqlContext.createDataFrame(ordersLastMin, schema)
+    val DF = sqlContext.createDataFrame(data, schema)
 
     // copy to redshift
     val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
