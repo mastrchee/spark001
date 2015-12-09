@@ -15,29 +15,48 @@ object SyncOrderDetails {
   def main(args: Array[String]) {
     val mysqlHost = System.getenv("MYSQL_HOST")
     val mysqlUser = System.getenv("MYSQL_USER")
-    val mysqlPassword = sys.env("MYSQL_PASS")
-    val redshiftHost = sys.env("REDSHIFT_HOST")
-    val redshiftUser = sys.env("REDSHIFT_USER")
-    val redshiftPassword = sys.env("REDSHIFT_PASS")
-    val awsKey = sys.env("AWS_ACCESS_KEY_ID")
-    val awsSecret = sys.env("AWS_SECRET_ACCESS_KEY")
+    val mysqlPassword = System.getenv("MYSQL_PASS")
+    val redshiftHost = System.getenv("REDSHIFT_HOST")
+    val redshiftUser = System.getenv("REDSHIFT_USER")
+    val redshiftPassword = System.getenv("REDSHIFT_PASS")
+    val awsKey = System.getenv("AWS_ACCESS_KEY_ID")
+    val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
 
-    val redshiftTable = "order_details"
-    val S3Path = "secretsales-analytics/RedShift/Load/"+redshiftTable+"/"+(System.currentTimeMillis / 1000)
+    val table = "order_details"
+    val tableKey = "order_detail_id"
+    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+(System.currentTimeMillis / 1000)
+
+    val tmp = sqlContext.read.format("jdbc").options(Map(
+        ("url", redshiftHost),
+        ("user", redshiftUser),
+        ("password", redshiftPassword),
+        ("dbtable","(select max("+tableKey+") as max_id from "+table+") tmp"),
+        ("driver", "com.amazon.redshift.jdbc41.Driver")
+      )).load()
+
+    val maxId=tmp.select("max_id").first().getLong(0)
+
+    // val data = sqlContext.read.format("jdbc").options(Map(
+    //     ("url", mysqlHost),
+    //     ("user", mysqlUser),
+    //     ("password", mysqlPassword),
+    //     ("dbtable", "()" + data),
+    //     ("driver", "com.mysql.jdbc.Driver")
+    //   )).load()
 
     // get data
     val ordersLastMin = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "select od.order_detail_id, o.order_id, od.product_id, p.collection_id, o.total_price as 'order_total', od.price, p.store_price as 'cost_price', o.discount, o.vat, o.vat_value, o.added from orders o LEFT JOIN order_details od ON o.order_id = od.order_id LEFT JOIN products p ON od.product_id = p.id where o.added BETWEEN DATE_FORMAT(DATE_SUB(CURTIME(), INTERVAL 6 MINUTE), '%Y-%m-%d %H:%i:00') AND DATE_FORMAT(DATE_SUB(CURTIME(), INTERVAL 1 MINUTE), '%Y-%m-%d %H:%i:59') ORDER BY od.order_detail_id ASC LIMIT ?, ?",
-      0, 999, 10, r => Row(
+      "SELECT od.order_detail_id, o.order_id, od.product_id, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(p.store_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added FROM order_details od INNER JOIN orders o ON od.order_id = o.order_id LEFT JOIN products p ON od.product_id = p.id WHERE od.order_detail_id > "+maxId+" LIMIT ?, ?",
+      0, 9999, 10, r => Row(
         r.getInt("order_detail_id"),
         r.getInt("order_id"),
         r.getInt("product_id"),
         r.getInt("collection_id"),
         r.getFloat("cost_price"),
         r.getFloat("price"),
-        (r.getFloat("price")/r.getFloat("order_total")).toFloat*r.getFloat("discount"), // disount per product
-        (r.getFloat("price")/100.0f).toFloat*r.getFloat("vat"), // vat_value per product
+        if (r.getFloat("discount") > 0) (r.getFloat("price")/r.getFloat("total_price")).toFloat*r.getFloat("discount") else 0.0f, // disount per product (ternary check because of s**tty data)
+        if (r.getFloat("vat") > 0) (r.getFloat("price")/(100.0f+r.getFloat("vat"))) * r.getFloat("vat") else 0.0f, // vat_value per product (ternary check because of s**tty data)
         r.getTimestamp("added")
       )
     )
@@ -60,6 +79,6 @@ object SyncOrderDetails {
 
     // copy to redshift
     val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
-    RedShift.CopyFromDataFrame(DF, redshiftTable, S3Path)
+    RedShift.CopyFromDataFrame(DF, table, S3Path)
   }
 }

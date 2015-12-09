@@ -15,21 +15,31 @@ object SyncOrders {
   def main(args: Array[String]) {
     val mysqlHost = System.getenv("MYSQL_HOST")
     val mysqlUser = System.getenv("MYSQL_USER")
-    val mysqlPassword = sys.env("MYSQL_PASS")
-    val redshiftHost = sys.env("REDSHIFT_HOST")
-    val redshiftUser = sys.env("REDSHIFT_USER")
-    val redshiftPassword = sys.env("REDSHIFT_PASS")
-    val awsKey = sys.env("AWS_ACCESS_KEY_ID")
-    val awsSecret = sys.env("AWS_SECRET_ACCESS_KEY")
+    val mysqlPassword = System.getenv("MYSQL_PASS")
+    val redshiftHost = System.getenv("REDSHIFT_HOST")
+    val redshiftUser = System.getenv("REDSHIFT_USER")
+    val redshiftPassword = System.getenv("REDSHIFT_PASS")
+    val awsKey = System.getenv("AWS_ACCESS_KEY_ID")
+    val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
 
     val redshiftTable = "orders"
     val S3Path = "secretsales-analytics/RedShift/Load/"+redshiftTable+"/"+(System.currentTimeMillis / 1000)
 
+    val tmp = sqlContext.read.format("jdbc").options(Map(
+        ("url", redshiftHost),
+        ("user", redshiftUser),
+        ("password", redshiftPassword),
+        ("dbtable","(select max(order_id) as max_id from "+redshiftTable+") tmp"),
+        ("driver", "com.amazon.redshift.jdbc41.Driver")
+      )).load()
+
+      val maxId=tmp.select("max_id").first().getLong(0)
+
     // get data
     val orders = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `order_progress_id`, `added` FROM orders where added BETWEEN DATE_FORMAT(DATE_SUB(CURTIME(), INTERVAL 6 MINUTE), '%Y-%m-%d %H:%i:00') AND DATE_FORMAT(DATE_SUB(CURTIME(), INTERVAL 1 MINUTE), '%Y-%m-%d %H:%i:59') ORDER BY order_id ASC LIMIT ?, ?",
-      0, 999, 10, r => Row(
+      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `order_progress_id`, `added` FROM orders WHERE order_id > "+maxId+" LIMIT ?, ?",
+      0, 999, 2, r => Row(
         r.getInt("order_id"),
         r.getInt("user_id"),
         r.getFloat("total_price"),
