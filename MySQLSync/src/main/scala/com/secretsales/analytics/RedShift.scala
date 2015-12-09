@@ -26,6 +26,7 @@ class RedShift(
     DF.write
       .format("com.databricks.spark.csv")
       .option("header", "false")
+      .option("charset", "UTF-8")
       .save("s3n://" + S3Path)
 
     CopyFromS3(Table, S3Path+"/part-")
