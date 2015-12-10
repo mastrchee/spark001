@@ -7,28 +7,47 @@ class RedShift(
   val host: String,
   val user: String,
   val password: String,
-  val AWSKey: String,
-  val AWSSecret: String
+  val awsKey: String,
+  val awsSecret: String,
+  val staginTablePrefix: String = (System.currentTimeMillis / 1000) + "_staging_"
 ) {
 
   def getConnection() : Connection = {
     return DriverManager.getConnection(host,user,password)
   }
 
-  def CopyFromS3(Table: String, S3Path: String) {
+  def CopyFromS3(table:String, s3Path: String) {
     val redshift = getConnection()
-    var sql = "COPY "+Table+" FROM 's3://"+S3Path+"' credentials 'aws_access_key_id="+AWSKey+";aws_secret_access_key="+AWSSecret+"' csv"
-    var insert = redshift.prepareStatement(sql)
+    val sql = "COPY "+table+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv"
+    val insert = redshift.prepareStatement(sql)
     insert.executeUpdate()
   }
 
-  def CopyFromDataFrame(DF: DataFrame, Table: String, S3Path: String) {
-    DF.write
+  def CopyFromS3Unique(table:String, s3Path: String, uniqueKey: String) {
+    val redshift = getConnection()
+    val stagingTable = staginTablePrefix + table
+    val sql = "BEGIN TRANSACTION; "+
+    "CREATE TABLE "+stagingTable+" LIKE "+table+"; "+
+    "COPY "+stagingTable+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv; "+
+    "DELETE FROM "+table+" USING "+stagingTable+" WHERE "+table+"."+uniqueKey+" = "+stagingTable+"."+uniqueKey+"; "+
+    "INSERT INTO "+table+" SELECT * FROM "+stagingTable+" "+
+    "END TRANSACTION; "+
+    "DROP TABLE "+stagingTable+";"
+    val insert = redshift.prepareStatement(sql)
+    insert.executeUpdate()
+  }
+
+  def CopyFromDataFrame(source: DataFrame, table:String, s3Path: String, uniqueKey: String = null) {
+    source.write
       .format("com.databricks.spark.csv")
       .option("header", "false")
       .option("charset", "UTF-8")
-      .save("s3n://" + S3Path)
+      .save("s3n://" + s3Path)
 
-    CopyFromS3(Table, S3Path+"/part-")
+    if (uniqueKey != null) {
+      CopyFromS3(table, s3Path+"/part-")
+    } else {
+      CopyFromS3Unique(table, s3Path+"/part-", uniqueKey)
+    }
   }
 }
