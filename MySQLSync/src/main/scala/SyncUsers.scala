@@ -10,6 +10,7 @@ object SyncUsers {
   val sparkConf = new SparkConf()
   val sparkContext = new SparkContext(sparkConf)
   val sqlContext = new SQLContext(sparkContext)
+  val applicationId = sparkContext.applicationId
   import sqlContext.implicits._
 
   def main(args: Array[String]) {
@@ -25,7 +26,7 @@ object SyncUsers {
     val table = "users"
     val tableUniqueKey = "user_id"
     val tableLastUpdatedKey = "last_updated"
-    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+(System.currentTimeMillis / 1000)
+    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+applicationId
 
     val tmp = sqlContext.read.format("jdbc").options(Map(
         ("url", redshiftHost),
@@ -71,7 +72,7 @@ object SyncUsers {
     val DF = sqlContext.createDataFrame(data, schema)
 
     // copy to redshift
-    val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+    val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
     RedShift.CopyFromDataFrame(DF, table, S3Path, tableUniqueKey)
   }
 }
