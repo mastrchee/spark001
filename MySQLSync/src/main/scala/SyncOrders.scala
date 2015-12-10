@@ -10,6 +10,7 @@ object SyncOrders {
   val sparkConf = new SparkConf()
   val sparkContext = new SparkContext(sparkConf)
   val sqlContext = new SQLContext(sparkContext)
+  val applicationId = sparkContext.applicationId
   import sqlContext.implicits._
 
   def main(args: Array[String]) {
@@ -25,7 +26,7 @@ object SyncOrders {
     val table = "orders"
     val tableUniqueKey = "order_id"
     val tableLastUpdatedKey = "updated_at"
-    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+(System.currentTimeMillis / 1000)
+    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+applicationId
 
     val tmp = sqlContext.read.format("jdbc").options(Map(
         ("url", redshiftHost),
@@ -42,10 +43,11 @@ object SyncOrders {
     // get data
     val data = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id > "+tableLastId+" OR updated_at > '"+tableLastUpdated+"' LIMIT ?, ?",
+      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id > "+tableLastId+" OR updated_at > '"+tableLastUpdated+"' LIMIT ?, ?",
       0, 10000, 100, r => Row(
         r.getInt("order_id"),
         r.getInt("user_id"),
+        if (r.getString("VendorTxCode") == null) "" else r.getString("VendorTxCode"),
         r.getFloat("total_price"),
         r.getString("discountcode"),
         r.getFloat("delivery_price"),
@@ -66,6 +68,7 @@ object SyncOrders {
     val schema = StructType(Array(
       StructField("order_id",IntegerType,true),
       StructField("user_id",IntegerType,true),
+      StructField("checkout_id",StringType,true),
       StructField("total_price",FloatType,true),
       StructField("discountcode",StringType,true),
       StructField("delivery_price",FloatType,true),
@@ -79,7 +82,7 @@ object SyncOrders {
     val DF = sqlContext.createDataFrame(data, schema)
 
     // copy to redshift
-    val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+    val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
     RedShift.CopyFromDataFrame(DF, table, S3Path, tableUniqueKey)
   }
 }
