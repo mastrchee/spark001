@@ -1,4 +1,4 @@
-package com.secretsales.analytics
+package com.secretsales.analytics.database
 
 import java.sql.{Connection, DriverManager}
 import org.apache.spark.sql.DataFrame
@@ -12,7 +12,7 @@ class RedShift(
   val staginTablePrefix: String = "staging_"
 ) {
 
-  def getConnection() : Connection = {
+  private def getConnection() : Connection = {
     return DriverManager.getConnection(host,user,password)
   }
 

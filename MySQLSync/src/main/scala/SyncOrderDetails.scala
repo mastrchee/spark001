@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import com.secretsales.analytics.RedShift
+import com.secretsales.analytics.database.RedShift
 
 object SyncOrderDetails {
   val sparkConf = new SparkConf()
@@ -32,24 +32,18 @@ object SyncOrderDetails {
         ("url", redshiftHost),
         ("user", redshiftUser),
         ("password", redshiftPassword),
-        ("dbtable","(select max("+tableUniqueKey+") as max_id from "+table+") tmp"),
+        ("dbtable","(select max("+tableUniqueKey+") as last_id, max(updated) as last_updated, getdate() as time_now from "+table+") tmp"),
         ("driver", "com.amazon.redshift.jdbc41.Driver")
       )).load()
 
-    val maxId=tmp.select("max_id").first().getLong(0)
-
-    // val data = sqlContext.read.format("jdbc").options(Map(
-    //     ("url", mysqlHost),
-    //     ("user", mysqlUser),
-    //     ("password", mysqlPassword),
-    //     ("dbtable", "()" + data),
-    //     ("driver", "com.mysql.jdbc.Driver")
-    //   )).load()
+      val row = tmp.select("last_id", "last_updated", "time_now").first()
+      val tableLastId = row.getLong(0)
+      val tableLastUpdated = if (row.getTimestamp(1) == null) row.getTimestamp(2).toString else row.getTimestamp(1).toString
 
     // get data
     val data = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku WHERE od.order_detail_id > "+maxId+" LIMIT ?, ?",
+      "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku WHERE od.order_detail_id > "+tableLastId+" LIMIT ?, ?",
       0, 10000, 100, r => Row(
         r.getInt("order_detail_id"),
         r.getInt("order_id"),

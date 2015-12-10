@@ -4,7 +4,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkConf
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import com.secretsales.analytics.RedShift
+import com.secretsales.analytics.database.RedShift
 
 object SyncUsers {
   val sparkConf = new SparkConf()
@@ -32,13 +32,13 @@ object SyncUsers {
         ("url", redshiftHost),
         ("user", redshiftUser),
         ("password", redshiftPassword),
-        ("dbtable","(select max("+tableUniqueKey+") as last_id, max(updated) as last_updated from "+table+") tmp"),
+        ("dbtable","(select max("+tableUniqueKey+") as last_id, max(updated) as last_updated, getdate() as time_now from "+table+") tmp"),
         ("driver", "com.amazon.redshift.jdbc41.Driver")
       )).load()
 
-    val row = tmp.select("last_id", "last_updated").first();
-    val tableLastId = row.getLong(0)
-    val tableLastUpdated = if (row.getTimestamp(1) == null) "0000-00-00 00:00:00" else row.getTimestamp(1).toString
+      val row = tmp.select("last_id", "last_updated", "time_now").first()
+      val tableLastId = row.getLong(0)
+      val tableLastUpdated = if (row.getTimestamp(1) == null) row.getTimestamp(2).toString else row.getTimestamp(1).toString
 
     // get data
     val data = new JdbcRDD(sparkContext,
