@@ -23,23 +23,26 @@ object SyncUsers {
     val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
 
     val table = "users"
-    val tableKey = "user_id"
+    val tableUniqueKey = "user_id"
+    val tableLastUpdatedKey = "last_updated"
     val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+(System.currentTimeMillis / 1000)
 
     val tmp = sqlContext.read.format("jdbc").options(Map(
         ("url", redshiftHost),
         ("user", redshiftUser),
         ("password", redshiftPassword),
-        ("dbtable","(select max("+tableKey+") as max_id from "+table+") tmp"),
+        ("dbtable","(select max("+tableUniqueKey+") as last_id, max(updated) as last_updated from "+table+") tmp"),
         ("driver", "com.amazon.redshift.jdbc41.Driver")
       )).load()
 
-    val maxId=tmp.select("max_id").first().getLong(0)
+    val row = tmp.select("last_id", "last_updated").first();
+    val tableLastId = row.getLong(0)
+    val tableLastUpdated = if (row.getTimestamp(1) == null) "0000-00-00 00:00:00" else row.getTimestamp(1).toString
 
     // get data
     val data = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users WHERE user_id > "+maxId+" LIMIT ?, ?",
+      "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users WHERE user_id > "+tableLastId+" OR last_updated > '"+tableLastUpdated+"' LIMIT ?, ?",
       0, 10000, 100, r => Row(
         r.getInt("user_id"),
         r.getString("gender") match {
@@ -69,6 +72,6 @@ object SyncUsers {
 
     // copy to redshift
     val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
-    RedShift.CopyFromDataFrame(DF, table, S3Path)
+    RedShift.CopyFromDataFrame(DF, table, S3Path, tableUniqueKey)
   }
 }

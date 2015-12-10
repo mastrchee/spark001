@@ -22,23 +22,27 @@ object SyncOrders {
     val awsKey = System.getenv("AWS_ACCESS_KEY_ID")
     val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
 
-    val redshiftTable = "orders"
-    val S3Path = "secretsales-analytics/RedShift/Load/"+redshiftTable+"/"+(System.currentTimeMillis / 1000)
+    val table = "orders"
+    val tableUniqueKey = "order_id"
+    val tableLastUpdatedKey = "updated_at"
+    val S3Path = "secretsales-analytics/RedShift/Load/"+table+"/"+(System.currentTimeMillis / 1000)
 
     val tmp = sqlContext.read.format("jdbc").options(Map(
         ("url", redshiftHost),
         ("user", redshiftUser),
         ("password", redshiftPassword),
-        ("dbtable","(select max(order_id) as max_id from "+redshiftTable+") tmp"),
+        ("dbtable","(select max("+tableUniqueKey+") as last_id, max(updated) as last_updated from "+table+") tmp"),
         ("driver", "com.amazon.redshift.jdbc41.Driver")
       )).load()
 
-      val maxId=tmp.select("max_id").first().getLong(0)
+    val row = tmp.select("last_id", "last_updated").first();
+    val tableLastId = row.getLong(0)
+    val tableLastUpdated = if (row.getTimestamp(1) == null) "0000-00-00 00:00:00" else row.getTimestamp(1).toString
 
     // get data
     val data = new JdbcRDD(sparkContext,
       () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `order_progress_id`, `added` FROM orders WHERE order_id > "+maxId+" LIMIT ?, ?",
+      "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id > "+tableLastId+" OR updated_at > '"+tableLastUpdated+"' LIMIT ?, ?",
       0, 10000, 100, r => Row(
         r.getInt("order_id"),
         r.getInt("user_id"),
@@ -53,7 +57,8 @@ object SyncOrders {
           case "AY" => "Adyen"
           case _    => "Other"
         },
-        r.getTimestamp("added")
+        if (r.getString("added") == null) "" else r.getString("added"),
+        if (r.getString("updated_at") == null) "" else r.getString("updated_at")
       )
     )
 
@@ -66,7 +71,8 @@ object SyncOrders {
       StructField("delivery_price",FloatType,true),
       StructField("order_progress_id",IntegerType,true),
       StructField("payment_method",StringType,true),
-      StructField("created",TimestampType,true)
+      StructField("created",StringType,true),
+      StructField("updated",StringType,true)
     ))
 
     // convert to DataFrame
@@ -74,6 +80,6 @@ object SyncOrders {
 
     // copy to redshift
     val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
-    RedShift.CopyFromDataFrame(DF, redshiftTable, S3Path)
+    RedShift.CopyFromDataFrame(DF, table, S3Path, tableUniqueKey)
   }
 }
