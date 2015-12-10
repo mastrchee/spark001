@@ -9,7 +9,7 @@ class RedShift(
   val password: String,
   val awsKey: String,
   val awsSecret: String,
-  val staginTablePrefix: String = (System.currentTimeMillis / 1000) + "_staging_"
+  val staginTablePrefix: String = "staging_"
 ) {
 
   def getConnection() : Connection = {
