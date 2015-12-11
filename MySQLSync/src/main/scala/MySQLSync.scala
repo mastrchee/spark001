@@ -7,7 +7,6 @@ import org.apache.spark.sql.types._
 import com.secretsales.analytics.database.RedShift
 import com.secretsales.analytics.retriever.redshift._
 import com.secretsales.analytics.table._
-import java.sql.ResultSet
 
 object MySQLSync {
   def main(args: Array[String]) {
@@ -39,10 +38,12 @@ object MySQLSync {
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
+      var sql = table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)
+      println(sql)
       // get data
       val data = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-        table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)+" LIMIT ?, ?",
+        sql+" LIMIT ?, ?",
         0, batchSize, partitionSize, r => table.getMap(r)
       )
 
