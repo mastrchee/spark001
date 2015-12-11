@@ -31,20 +31,18 @@ class RedShift (
   def CopyFromS3Unique(table : String, s3Path : String, uniqueKey : String) {
     val redshift = getConnection()
     val stagingTable = staginTablePrefix + table
-    var sql = "CREATE TABLE "+stagingTable+" (LIKE "+table+");"
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "BEGIN TRANSACTION; "
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "COPY "+stagingTable+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv; "
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "DELETE FROM "+table+" USING "+stagingTable+" WHERE "+table+"."+uniqueKey+" = "+stagingTable+"."+uniqueKey+"; "
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "INSERT INTO "+table+" SELECT * FROM "+stagingTable+"; "
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "END TRANSACTION; "
-    redshift.prepareStatement(sql).executeUpdate();
-    sql = "DROP TABLE "+stagingTable+"; "
-    redshift.prepareStatement(sql).executeUpdate();
+    val queries = Array(
+      "CREATE TABLE "+stagingTable+" (LIKE "+table+");",
+      "BEGIN TRANSACTION;",
+      "COPY "+stagingTable+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv;",
+      "DELETE FROM "+table+" USING "+stagingTable+" WHERE "+table+"."+uniqueKey+" = "+stagingTable+"."+uniqueKey+";",
+      "INSERT INTO "+table+" SELECT * FROM "+stagingTable+";",
+      "END TRANSACTION;",
+      "DROP TABLE "+stagingTable+";"
+    )
+    for (query <- queries) {
+      redshift.prepareStatement(query).executeUpdate();
+    }
   }
 
   /** Creates a CSV file in S3 and attempts to copy it to RedShift */
