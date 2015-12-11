@@ -20,7 +20,7 @@ trait Table extends java.io.Serializable {
   def getSchema() : StructType
 
   /** Maps a ResultSet to a Row */
-  def getMap(r : ResultSet) : Row
+  def getMappedRow(r : ResultSet) : Row
 
   /** SQL for extracting data from source (i.e. SELECT * FROM table WHERE pkey > lastId) */
   def getExtractSql(lastId : Long, lastUpdated : String) : String

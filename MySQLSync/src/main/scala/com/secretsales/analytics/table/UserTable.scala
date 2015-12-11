@@ -21,7 +21,7 @@ class UserTable extends Table {
     ))
   }
 
-  def getMap(r: ResultSet): Row = {
+  def getMappedRow(r: ResultSet): Row = {
     return Row(
       r.getLong("user_id"),
       r.getString("gender") match {

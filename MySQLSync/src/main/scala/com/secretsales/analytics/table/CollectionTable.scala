@@ -19,7 +19,7 @@ class CollectionTable extends Table {
     ))
   }
 
-  def getMap(r : ResultSet) : Row = {
+  def getMappedRow(r : ResultSet) : Row = {
     return Row(
       r.getLong("id"),
       r.getString("name"),

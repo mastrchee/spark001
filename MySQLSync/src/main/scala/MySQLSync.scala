@@ -47,7 +47,7 @@ object MySQLSync {
       val data = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
         sql+" LIMIT ?, ?",
-        0, batchSize, partitionSize, r => table.getMap(r)
+        0, batchSize, partitionSize, r => table.getMappedRow(r)
       )
 
       // convert to DataFrame

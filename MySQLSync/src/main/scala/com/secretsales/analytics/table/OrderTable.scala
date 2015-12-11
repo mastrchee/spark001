@@ -25,7 +25,7 @@ class OrderTable extends Table {
     ))
   }
 
-  def getMap(r : ResultSet) : Row = {
+  def getMappedRow(r : ResultSet) : Row = {
     return Row(
       r.getLong("order_id"),
       r.getLong("user_id"),
