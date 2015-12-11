@@ -9,8 +9,8 @@ class CollectionTable extends Table {
   val mysqlKey = "id"
   val redshiftTable = "collections"
   val redshiftKey = "collection_id"
-  val batchSize = 100
-  val partitions = 1
+  val batchSize = 1000
+  val partitions = 10
 
   def getSchema() : StructType ={
     return StructType(Array(
