@@ -35,9 +35,11 @@ object MySQLSync {
       val applicationId = sparkContext.applicationId
       import sqlContext.implicits._
 
+      // get the latest rows in redshift
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
+      // get extraction sql
       var sql = table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)
 
       // get data
