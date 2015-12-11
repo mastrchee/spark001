@@ -11,10 +11,12 @@ import java.sql.ResultSet
  * Table interface
  */
 trait Table extends java.io.Serializable {
-  val mysqlTable : String;
-  val mysqlKey : String;
-  val redshiftTable : String;
-  val redshiftKey : String;
+  val mysqlTable : String
+  val mysqlKey : String
+  val redshiftTable : String
+  val redshiftKey : String
+  val batchSize: Int
+  val partitions: Int
 
   /** Returns table schema */
   def getSchema() : StructType

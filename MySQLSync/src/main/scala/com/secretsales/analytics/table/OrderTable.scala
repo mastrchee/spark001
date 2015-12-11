@@ -9,6 +9,8 @@ class OrderTable extends Table {
   val mysqlKey = "order_id"
   val redshiftTable = "orders"
   val redshiftKey = "order_id"
+  val batchSize = 10000
+  val partitions = 100
 
   def getSchema() : StructType ={
     return StructType(Array(

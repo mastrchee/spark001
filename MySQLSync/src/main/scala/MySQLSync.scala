@@ -19,15 +19,15 @@ object MySQLSync {
     val redshiftPassword = System.getenv("REDSHIFT_PASS")
     val awsKey = System.getenv("AWS_ACCESS_KEY_ID")
     val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
-    var batchSize = 1000
-    var partitionSize = 10
 
+    // setup SparkContext
     val sparkConf = new SparkConf()
     val sparkContext = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sparkContext)
     val applicationId = sparkContext.applicationId
     import sqlContext.implicits._
 
+    // tables to sync
     val tables = Array(
       new UserTable(),
       new OrderTable(),
@@ -35,6 +35,7 @@ object MySQLSync {
       new CollectionTable()
     )
 
+    // mapper function
     def syncTable (table: Table) {
       // get the latest rows in redshift
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
@@ -47,7 +48,7 @@ object MySQLSync {
       val data = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
         sql+" LIMIT ?, ?",
-        0, batchSize, partitionSize, r => table.getMappedRow(r)
+        0, table.batchSize, table.partitions, r => table.getMappedRow(r)
       )
 
       // convert to DataFrame
