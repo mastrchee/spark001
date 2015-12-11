@@ -10,6 +10,7 @@ import com.secretsales.analytics.table._
 
 object MySQLSync {
   def main(args: Array[String]) {
+    // Environment Vars (Will throw exception if not set)
     val mysqlHost = System.getenv("MYSQL_HOST")
     val mysqlUser = System.getenv("MYSQL_USER")
     val mysqlPassword = System.getenv("MYSQL_PASS")
@@ -55,7 +56,6 @@ object MySQLSync {
       // copy to redshift
       var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
       var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
-
       RedShift.CopyFromDataFrame(dataDF, table.redshiftTable, s3Path, table.redshiftKey)
       sparkContext.stop()
     }

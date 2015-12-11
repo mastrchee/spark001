@@ -4,8 +4,15 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 import java.sql.Timestamp
 
+/**
+ * class for wrapping latest row result with correct types
+ */
 case class LatestRow(lastId: Long, lastUpdated: Timestamp)
 
+/**
+ * Retrieves the latest row information from a redshift table
+ * Use for batch syncing from another source to redshift
+ */
 class LatestRowRetriever (
   sqlContext :SQLContext,
   host: String,
