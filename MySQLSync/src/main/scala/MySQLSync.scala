@@ -39,7 +39,7 @@ object MySQLSync {
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
       var sql = table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)
-      println(sql)
+
       // get data
       val data = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
