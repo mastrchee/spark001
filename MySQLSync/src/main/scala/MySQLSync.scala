@@ -21,20 +21,13 @@ object MySQLSync {
     var batchSize = 1000
     var partitionSize = 10
 
-    val tables = Array(
-      new UserTable(),
-      new OrderTable(),
-      new OrderDetailTable(),
-      new CollectionTable()
-    )
+    val sparkConf = new SparkConf()
+    val sparkContext = new SparkContext(sparkConf)
+    val sqlContext = new SQLContext(sparkContext)
+    val applicationId = sparkContext.applicationId
+    import sqlContext.implicits._
 
-    for (table <- tables) {
-      val sparkConf = new SparkConf().setAppName("sync_"+table.redshiftTable)
-      val sparkContext = new SparkContext(sparkConf)
-      val sqlContext = new SQLContext(sparkContext)
-      val applicationId = sparkContext.applicationId
-      import sqlContext.implicits._
-
+    def SyncTable(table: Table) {
       // get the latest rows in redshift
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
@@ -57,7 +50,15 @@ object MySQLSync {
       var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
 
       RedShift.CopyFromDataFrame(dataDF, table.redshiftTable, s3Path, table.redshiftKey)
-      sparkContext.stop()
     }
+
+    val tables = Array(
+      new UserTable(),
+      new OrderTable(),
+      new OrderDetailTable(),
+      new CollectionTable()
+    )
+
+    tables.map(SyncTable)
   }
 }
