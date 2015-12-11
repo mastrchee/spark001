@@ -10,7 +10,7 @@ class UserTable extends Table {
   val redshiftTable = "users"
   val redshiftKey = "user_id"
   val batchSize = 10000
-  val partitions = 100
+  val partitions = batchSize/1000
 
   def getSchema(): StructType = {
     return StructType(Array(

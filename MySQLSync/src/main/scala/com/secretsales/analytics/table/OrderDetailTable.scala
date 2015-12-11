@@ -10,7 +10,7 @@ class OrderDetailTable extends Table {
   val redshiftTable = "order_details"
   val redshiftKey = "order_detail_id"
   val batchSize = 10000
-  val partitions = 100
+  val partitions = batchSize/1000
 
   def getSchema() : StructType ={
     return StructType(Array(
