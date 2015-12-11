@@ -7,6 +7,7 @@ import org.apache.spark.sql.types._
 import com.secretsales.analytics.database.RedShift
 import com.secretsales.analytics.retriever.redshift._
 import com.secretsales.analytics.table._
+import java.security.MessageDigest
 
 object MySQLSync {
   def main(args: Array[String]) {
@@ -24,7 +25,7 @@ object MySQLSync {
     val sparkConf = new SparkConf()
     val sparkContext = new SparkContext(sparkConf)
     val sqlContext = new SQLContext(sparkContext)
-    val applicationId = sparkContext.applicationId
+    val applicationId = sparkContext.applicationId.replaceAll(" ", "").replaceAll("[^a-zA-Z0-9]", "_")
     import sqlContext.implicits._
 
     // tables to sync
@@ -56,7 +57,7 @@ object MySQLSync {
 
       // copy to redshift
       var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
+      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, "staging_" + applicationId + "_")
       RedShift.CopyFromDataFrame(dataDF, table.redshiftTable, s3Path, table.redshiftKey)
     }
 
