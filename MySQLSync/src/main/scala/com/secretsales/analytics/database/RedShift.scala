@@ -51,9 +51,9 @@ class RedShift (
       .save("s3n://" + s3Path)
 
     if (uniqueKey != null) {
-      CopyFromS3(table, s3Path+"/part-")
-    } else {
       CopyFromS3Unique(table, s3Path+"/part-", uniqueKey)
+    } else {
+      CopyFromS3(table, s3Path+"/part-")      
     }
   }
 }
