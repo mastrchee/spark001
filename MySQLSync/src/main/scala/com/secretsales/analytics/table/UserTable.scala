@@ -39,6 +39,6 @@ class UserTable extends Table {
   }
 
   def getExtractSql(lastId: Long, lastUpdated: String): String = {
-    return "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users WHERE user_id > "+lastId+" OR last_updated > '"+lastUpdated+"'"
+    return "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users WHERE user_id >= ? AND user_id <= ?"
   }
 }

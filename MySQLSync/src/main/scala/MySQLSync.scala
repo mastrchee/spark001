@@ -30,10 +30,10 @@ object MySQLSync {
 
     // tables to sync
     val tables = Array(
+      new CollectionTable(),
       new UserTable(),
       new OrderTable(),
-      new OrderDetailTable(),
-      new CollectionTable()
+      new OrderDetailTable()
     )
 
     // mapper function
@@ -48,8 +48,8 @@ object MySQLSync {
       // get data
       val data = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-        sql+" LIMIT ?, ?",
-        0, table.batchSize, table.partitions, r => table.getMappedRow(r)
+        sql,
+        latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.batchSize, table.partitions, r => table.getMappedRow(r)
       )
 
       // convert to DataFrame

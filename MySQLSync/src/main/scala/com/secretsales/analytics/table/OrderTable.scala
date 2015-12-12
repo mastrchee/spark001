@@ -49,6 +49,6 @@ class OrderTable extends Table {
   }
 
   def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id > "+lastId+" OR updated_at > '"+lastUpdated+"'"
+    return "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id >= ? AND order_id <= ?"
   }
 }

@@ -9,8 +9,8 @@ class CollectionTable extends Table {
   val mysqlKey = "id"
   val redshiftTable = "collections"
   val redshiftKey = "collection_id"
-  val batchSize = 100000
-  val partitions = batchSize/1000
+  val batchSize = 100
+  val partitions = 2
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -31,6 +31,6 @@ class CollectionTable extends Table {
   }
 
   def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT `id`, `name`, `created_at`, `updated_at` FROM collections WHERE id > "+lastId+" OR updated_at > '"+lastUpdated+"'"
+    return "SELECT `id`, `name`, `created_at`, `updated_at` FROM collections WHERE id >= ? AND id <= ?"
   }
 }
