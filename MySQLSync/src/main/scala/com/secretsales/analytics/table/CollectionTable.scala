@@ -2,7 +2,7 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 class CollectionTable extends Table {
   val mysqlTable = "collections"
@@ -11,6 +11,7 @@ class CollectionTable extends Table {
   val redshiftKey = "collection_id"
   val batchSize = 100
   val partitions = 2
+  val baseSelectQuery = "SELECT `id`, `name`, `created_at`, `updated_at` FROM collections"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -30,7 +31,11 @@ class CollectionTable extends Table {
     )
   }
 
-  def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT `id`, `name`, `created_at`, `updated_at` FROM collections WHERE id >= ? AND id <= ?"
+  def newRowQuery() : String = {
+    return baseSelectQuery +" WHERE id >= ? AND id <= ?"
+  }
+
+  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT 100"
   }
 }

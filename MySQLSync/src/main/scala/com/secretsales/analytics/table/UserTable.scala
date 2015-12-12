@@ -2,7 +2,7 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 class UserTable extends Table {
   val mysqlTable = "users"
@@ -11,6 +11,7 @@ class UserTable extends Table {
   val redshiftKey = "user_id"
   val batchSize = 100000
   val partitions = batchSize/1000
+  val baseSelectQuery = "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users"
 
   def getSchema(): StructType = {
     return StructType(Array(
@@ -38,7 +39,11 @@ class UserTable extends Table {
     )
   }
 
-  def getExtractSql(lastId: Long, lastUpdated: String): String = {
-    return "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users WHERE user_id >= ? AND user_id <= ?"
+  def newRowQuery(): String = {
+    return baseSelectQuery +" WHERE user_id >= ? AND user_id <= ?"
+  }
+
+  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND last_updated > '"+lastUpdated.toString+"' LIMIT 1000"
   }
 }

@@ -2,7 +2,7 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 class OrderDetailTable extends Table {
   val mysqlTable = "order_details"
@@ -11,6 +11,7 @@ class OrderDetailTable extends Table {
   val redshiftKey = "order_detail_id"
   val batchSize = 100000
   val partitions = batchSize/1000
+  val baseSelectQuery = "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added, od.updated_at FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -42,7 +43,11 @@ class OrderDetailTable extends Table {
     )
   }
 
-  def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added, od.updated_at FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku WHERE od.order_detail_id >= ? AND od.order_detail_id <= ?"
+  def newRowQuery() : String = {
+    return baseSelectQuery + " WHERE od.order_detail_id >= ? AND od.order_detail_id <= ?"
+  }
+
+  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+    return baseSelectQuery + " WHERE ? = ? AND od.updated_at > '"+lastUpdated.toString+"' LIMIT 1000"
   }
 }

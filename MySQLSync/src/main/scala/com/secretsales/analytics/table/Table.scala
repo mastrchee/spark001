@@ -5,7 +5,7 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 /*
  * Table interface
@@ -24,6 +24,7 @@ trait Table extends java.io.Serializable {
   /** Maps a ResultSet to a Row */
   def getMappedRow(r : ResultSet) : Row
 
-  /** SQL for extracting data from source (i.e. SELECT * FROM table WHERE pkey > lastId) */
-  def getExtractSql(lastId : Long, lastUpdated : String) : String
+  def newRowQuery() : String
+
+  def recentlyUpdatedRowQuery(lastUpdated : Timestamp) : String
 }

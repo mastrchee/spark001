@@ -42,23 +42,30 @@ object MySQLSync {
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
-      // get extraction sql
-      var sql = table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)
-
-      // get data
-      val data = new JdbcRDD(sparkContext,
+      // get new rows
+      val newRows = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-        sql,
+        table.newRowQuery(),
         latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.batchSize, table.partitions, r => table.getMappedRow(r)
       )
 
+      // get recently updated rows
+      val recentlyUpdated = new JdbcRDD(sparkContext,
+        () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
+        table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated),
+        1, 1, 1, r => table.getMappedRow(r)
+      )
+
       // convert to DataFrame
-      val dataDF = sqlContext.createDataFrame(data, table.getSchema())
+      val newRowsDataFrame = sqlContext.createDataFrame(newRows, table.getSchema())
+      val recentlyUpdatedDataFrame = sqlContext.createDataFrame(recentlyUpdated, table.getSchema())
 
       // copy to redshift
       var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, "staging_" + applicationId + "_")
-      RedShift.CopyFromDataFrame(dataDF, table.redshiftTable, s3Path, table.redshiftKey)
+      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+
+      RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey)
+      RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey)
     }
 
     tables.map(syncTable)

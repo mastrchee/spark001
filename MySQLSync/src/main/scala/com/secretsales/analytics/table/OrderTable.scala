@@ -2,7 +2,7 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 class OrderTable extends Table {
   val mysqlTable = "orders"
@@ -11,6 +11,7 @@ class OrderTable extends Table {
   val redshiftKey = "order_id"
   val batchSize = 100000
   val partitions = batchSize/1000
+  val baseSelectQuery = "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -48,7 +49,11 @@ class OrderTable extends Table {
     )
   }
 
-  def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id >= ? AND order_id <= ?"
+  def newRowQuery() : String = {
+    return baseSelectQuery +" WHERE order_id >= ? AND order_id <= ?"
+  }
+
+  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT 1000"
   }
 }
