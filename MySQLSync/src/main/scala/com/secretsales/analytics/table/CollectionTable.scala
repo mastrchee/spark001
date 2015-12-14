@@ -36,7 +36,7 @@ class CollectionTable extends Table {
     return baseSelectQuery +" WHERE id >= ? AND id <= ?"
   }
 
-  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
+  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND id <= "+latestId+" AND updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
   }
 }

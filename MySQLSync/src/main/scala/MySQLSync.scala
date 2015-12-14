@@ -57,10 +57,11 @@ object MySQLSync {
       RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey, applicationId + "_staging_new_")
 
       // get recently updated rows
-      if (table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated) != "") {
+      val updatedSql = table.recentlyUpdatedRowQuery(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated)
+      if (updatedSql != "") {
         val recentlyUpdated = new JdbcRDD(sparkContext,
           () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-          table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated),
+          updatedSql,
           1, 1, 1, r => table.getMappedRow(r)
         )
 

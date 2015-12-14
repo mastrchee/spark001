@@ -9,7 +9,7 @@ class OrderRefundTable extends Table {
   val mysqlKey = "id"
   val redshiftTable = "order_refunds"
   val redshiftKey = "order_refund_id"
-  val totalRecords = 10000
+  val totalRecords = 100000
   val batchSize = 1000
   val partitions = totalRecords/batchSize
   val baseSelectQuery = "SELECT `id`, `VendorTxCode`, `amount` , `reason`, `orderId`, `created` FROM orders_refund"
@@ -42,7 +42,7 @@ class OrderRefundTable extends Table {
     return baseSelectQuery +" WHERE id >= ? AND id <= ?"
   }
 
-  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
     return ""
   }
 }

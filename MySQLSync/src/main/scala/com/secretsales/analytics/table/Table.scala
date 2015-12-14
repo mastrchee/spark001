@@ -27,5 +27,5 @@ trait Table extends java.io.Serializable {
 
   def newRowQuery() : String
 
-  def recentlyUpdatedRowQuery(lastUpdated : Timestamp) : String
+  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated : Timestamp) : String
 }

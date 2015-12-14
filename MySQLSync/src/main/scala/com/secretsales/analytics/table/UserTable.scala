@@ -9,7 +9,7 @@ class UserTable extends Table {
   val mysqlKey = "user_id"
   val redshiftTable = "users"
   val redshiftKey = "user_id"
-  val totalRecords = 10000
+  val totalRecords = 100000
   val batchSize = 1000
   val partitions = totalRecords/batchSize
   val baseSelectQuery = "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users"
@@ -44,7 +44,7 @@ class UserTable extends Table {
     return baseSelectQuery +" WHERE user_id >= ? AND user_id <= ?"
   }
 
-  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND last_updated > '"+lastUpdated.toString+"' LIMIT "+batchSize
+  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND user_id <= "+latestId+" AND last_updated > '"+lastUpdated.toString+"' LIMIT "+batchSize
   }
 }
