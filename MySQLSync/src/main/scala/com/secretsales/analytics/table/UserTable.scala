@@ -9,7 +9,7 @@ class UserTable extends Table {
   val mysqlKey = "user_id"
   val redshiftTable = "users"
   val redshiftKey = "user_id"
-  val totalRecords = 100000
+  val totalRecords = 10000
   val batchSize = 1000
   val partitions = totalRecords/batchSize
   val baseSelectQuery = "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users"

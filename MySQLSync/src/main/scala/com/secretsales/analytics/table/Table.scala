@@ -16,7 +16,7 @@ trait Table extends java.io.Serializable {
   val redshiftTable : String
   val redshiftKey : String
   val totalRecords: Int
-  val batchSize: Int
+  val batchSize: Int // per query > per csv
   val partitions: Int
 
   /** Returns table schema */
