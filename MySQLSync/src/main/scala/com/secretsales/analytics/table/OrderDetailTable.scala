@@ -37,7 +37,7 @@ class OrderDetailTable extends Table {
       r.getFloat("cost_price"),
       r.getFloat("price"),
       if (r.getFloat("discount") > 0) (r.getFloat("price")/r.getFloat("total_price")).toFloat*r.getFloat("discount") else 0.0f, // disount per product (ternary check because of s**tty data)
-      if (r.getFloat("vat") > 0) (r.getFloat("price")/(100.0f+r.getFloat("vat"))) * r.getFloat("vat") else 0.0f, // vat_value per product (ternary check because of s**tty data)
+      if (r.getFloat("vat") > 0 && r.getFloat("vat_value") > 0) (r.getFloat("price")/(100.0f+r.getFloat("vat"))) * r.getFloat("vat") else 0.0f, // vat_value per product (ternary check because of s**tty data)
       if (r.getString("added") == null) "" else r.getString("added"),
       if (r.getString("updated_at") == null) "" else r.getString("updated_at")
     )
