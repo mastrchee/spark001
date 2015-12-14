@@ -9,9 +9,10 @@ class OrderTable extends Table {
   val mysqlKey = "order_id"
   val redshiftTable = "orders"
   val redshiftKey = "order_id"
-  val batchSize = 100000
-  val partitions = batchSize/1000
-  val baseSelectQuery = "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
+  val totalRecords: 100000
+  val batchSize: 1000
+  val partitions: totalRecords/batchSize
+  val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -19,6 +20,7 @@ class OrderTable extends Table {
       StructField("user_id",LongType,true),
       StructField("checkout_id",StringType,true),
       StructField("total_price",FloatType,true),
+      StructField("discount",FloatType,true),
       StructField("discountcode",StringType,true),
       StructField("delivery_price",FloatType,true),
       StructField("order_progress_id",IntegerType,true),
@@ -34,6 +36,7 @@ class OrderTable extends Table {
       r.getLong("user_id"),
       if (r.getString("VendorTxCode") == null) "" else r.getString("VendorTxCode"),
       r.getFloat("total_price"),
+      r.getFloat("discount"),
       r.getString("discountcode"),
       r.getFloat("delivery_price"),
       r.getInt("order_progress_id"),
@@ -54,6 +57,6 @@ class OrderTable extends Table {
   }
 
   def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT 1000"
+    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
   }
 }
