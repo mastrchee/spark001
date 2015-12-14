@@ -11,8 +11,7 @@ class RedShift (
   val user: String,
   val password: String,
   val awsKey: String,
-  val awsSecret: String,
-  val staginTablePrefix: String = "staging_"
+  val awsSecret: String
 ) {
   /** Returns DB Connection */
   private def getConnection() : Connection = {
@@ -28,22 +27,25 @@ class RedShift (
   }
 
   /** Initiates COPY (csv) command to RedShift using S3 and maintains unique keys */
-  def CopyFromS3Unique(table : String, s3Path : String, uniqueKey : String) {
+  def CopyFromS3Unique(table : String, s3Path : String, uniqueKey : String, staginTablePrefix: String = "staging_") {
     val redshift = getConnection()
     val stagingTable = staginTablePrefix + table
-    val sql = "BEGIN TRANSACTION; "+
-    "CREATE TABLE "+stagingTable+" LIKE "+table+"; "+
-    "COPY "+stagingTable+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv; "+
-    "DELETE FROM "+table+" USING "+stagingTable+" WHERE "+table+"."+uniqueKey+" = "+stagingTable+"."+uniqueKey+"; "+
-    "INSERT INTO "+table+" SELECT * FROM "+stagingTable+" "+
-    "END TRANSACTION; "+
-    "DROP TABLE "+stagingTable+";"
-    val insert = redshift.prepareStatement(sql)
-    insert.executeUpdate()
+    val queries = Array(
+      "BEGIN TRANSACTION;",
+      "CREATE TEMPORARY TABLE "+stagingTable+" (LIKE "+table+");",
+      "COPY "+stagingTable+" FROM 's3://"+s3Path+"' credentials 'aws_access_key_id="+awsKey+";aws_secret_access_key="+awsSecret+"' csv;",
+      "DELETE FROM "+table+" USING "+stagingTable+" WHERE "+table+"."+uniqueKey+" = "+stagingTable+"."+uniqueKey+";",
+      "INSERT INTO "+table+" SELECT * FROM "+stagingTable+";",
+      "DROP TABLE "+stagingTable+";",
+      "END TRANSACTION;"
+    )
+    for (query <- queries) {
+      redshift.prepareStatement(query).executeUpdate();
+    }
   }
 
   /** Creates a CSV file in S3 and attempts to copy it to RedShift */
-  def CopyFromDataFrame(source: DataFrame, table : String, s3Path : String, uniqueKey : String = null) {
+  def CopyFromDataFrame(source: DataFrame, table : String, s3Path : String, uniqueKey : String = null, staginTablePrefix: String = "staging_") {
     source.write
       .format("com.databricks.spark.csv")
       .option("header", "false")
@@ -51,9 +53,9 @@ class RedShift (
       .save("s3n://" + s3Path)
 
     if (uniqueKey != null) {
-      CopyFromS3(table, s3Path+"/part-")
+      CopyFromS3Unique(table, s3Path+"/part-", uniqueKey, staginTablePrefix)
     } else {
-      CopyFromS3Unique(table, s3Path+"/part-", uniqueKey)
+      CopyFromS3(table, s3Path+"/part-")
     }
   }
 }

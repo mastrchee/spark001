@@ -2,13 +2,17 @@ package com.secretsales.analytics.table
 
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
-import java.sql.ResultSet
+import java.sql.{ResultSet, Timestamp}
 
 class OrderTable extends Table {
   val mysqlTable = "orders"
   val mysqlKey = "order_id"
   val redshiftTable = "orders"
   val redshiftKey = "order_id"
+  val totalRecords = 100000
+  val batchSize = 1000
+  val partitions = totalRecords/batchSize
+  val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -16,6 +20,7 @@ class OrderTable extends Table {
       StructField("user_id",LongType,true),
       StructField("checkout_id",StringType,true),
       StructField("total_price",FloatType,true),
+      StructField("discount",FloatType,true),
       StructField("discountcode",StringType,true),
       StructField("delivery_price",FloatType,true),
       StructField("order_progress_id",IntegerType,true),
@@ -25,12 +30,13 @@ class OrderTable extends Table {
     ))
   }
 
-  def getMap(r : ResultSet) : Row = {
+  def getMappedRow(r : ResultSet) : Row = {
     return Row(
       r.getLong("order_id"),
       r.getLong("user_id"),
       if (r.getString("VendorTxCode") == null) "" else r.getString("VendorTxCode"),
       r.getFloat("total_price"),
+      r.getFloat("discount"),
       r.getString("discountcode"),
       r.getFloat("delivery_price"),
       r.getInt("order_progress_id"),
@@ -46,7 +52,11 @@ class OrderTable extends Table {
     )
   }
 
-  def getExtractSql(lastId : Long, lastUpdated: String) : String = {
-    return "SELECT `order_id`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders WHERE order_id > "+lastId+" OR updated_at > '"+lastUpdated+"'"
+  def newRowQuery() : String = {
+    return baseSelectQuery +" WHERE order_id >= ? AND order_id <= ?"
+  }
+
+  def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
   }
 }

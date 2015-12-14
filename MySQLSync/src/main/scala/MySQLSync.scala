@@ -19,45 +19,54 @@ object MySQLSync {
     val redshiftPassword = System.getenv("REDSHIFT_PASS")
     val awsKey = System.getenv("AWS_ACCESS_KEY_ID")
     val awsSecret = System.getenv("AWS_SECRET_ACCESS_KEY")
-    var batchSize = 1000
-    var partitionSize = 10
 
+    // setup SparkContext
+    val sparkConf = new SparkConf()
+    val sparkContext = new SparkContext(sparkConf)
+    val sqlContext = new SQLContext(sparkContext)
+    val applicationId = sparkContext.applicationId.replaceAll(" ", "").replaceAll("[^a-zA-Z0-9]", "_")
+    import sqlContext.implicits._
+
+    // tables to sync
     val tables = Array(
+      new CollectionTable(),
       new UserTable(),
       new OrderTable(),
-      new OrderDetailTable(),
-      new CollectionTable()
+      new OrderDetailTable()
     )
 
-    for (table <- tables) {
-      val sparkConf = new SparkConf().setAppName("sync_"+table.redshiftTable)
-      val sparkContext = new SparkContext(sparkConf)
-      val sqlContext = new SQLContext(sparkContext)
-      val applicationId = sparkContext.applicationId
-      import sqlContext.implicits._
-
+    // mapper function
+    def syncTable (table: Table) {
       // get the latest rows in redshift
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
-      // get extraction sql
-      var sql = table.getExtractSql(latestRedshiftRow.lastId, latestRedshiftRow.lastUpdated.toString)
-
-      // get data
-      val data = new JdbcRDD(sparkContext,
+      // get new rows
+      val newRows = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-        sql+" LIMIT ?, ?",
-        0, batchSize, partitionSize, r => table.getMap(r)
+        table.newRowQuery(),
+        latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.totalRecords, table.partitions, r => table.getMappedRow(r)
+      )
+
+      // get recently updated rows
+      val recentlyUpdated = new JdbcRDD(sparkContext,
+        () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
+        table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated),
+        1, 1, 1, r => table.getMappedRow(r)
       )
 
       // convert to DataFrame
-      val dataDF = sqlContext.createDataFrame(data, table.getSchema())
+      val newRowsDataFrame = sqlContext.createDataFrame(newRows, table.getSchema())
+      val recentlyUpdatedDataFrame = sqlContext.createDataFrame(recentlyUpdated, table.getSchema())
 
       // copy to redshift
       var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
-      RedShift.CopyFromDataFrame(dataDF, table.redshiftTable, s3Path, table.redshiftKey)
-      sparkContext.stop()
+      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+
+      RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey, applicationId + "_staging_new_")
+      RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey, applicationId + "_staging_updated_")
     }
+
+    tables.map(syncTable)
   }
 }
