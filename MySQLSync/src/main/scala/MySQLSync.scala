@@ -62,10 +62,10 @@ object MySQLSync {
 
       // copy to redshift
       var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret, applicationId + "_staging_")
+      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
 
-      RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey)
-      RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey)
+      RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey, applicationId + "_staging_new_")
+      RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey, applicationId + "_staging_updated_")
     }
 
     tables.map(syncTable)
