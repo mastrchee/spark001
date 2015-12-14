@@ -32,7 +32,8 @@ object MySQLSync {
       new CollectionTable(),
       new UserTable(),
       new OrderTable(),
-      new OrderDetailTable()
+      new OrderDetailTable(),
+      new OrderRefundTable()
     )
 
     // mapper function
@@ -41,6 +42,9 @@ object MySQLSync {
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword)
       val latestRedshiftRow : LatestRow = redshiftLatestRowRetriever.getLatest(table.redshiftTable, table.redshiftKey)
 
+      var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
+      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+
       // get new rows
       val newRows = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
@@ -48,23 +52,21 @@ object MySQLSync {
         latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.totalRecords, table.partitions, r => table.getMappedRow(r)
       )
 
-      // get recently updated rows
-      val recentlyUpdated = new JdbcRDD(sparkContext,
-        () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
-        table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated),
-        1, 1, 1, r => table.getMappedRow(r)
-      )
-
       // convert to DataFrame
       val newRowsDataFrame = sqlContext.createDataFrame(newRows, table.getSchema())
-      val recentlyUpdatedDataFrame = sqlContext.createDataFrame(recentlyUpdated, table.getSchema())
-
-      // copy to redshift
-      var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
-
       RedShift.CopyFromDataFrame(newRowsDataFrame, table.redshiftTable, s3Path + "/new", table.redshiftKey, applicationId + "_staging_new_")
-      RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey, applicationId + "_staging_updated_")
+
+      // get recently updated rows
+      if (table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated) != "") {
+        val recentlyUpdated = new JdbcRDD(sparkContext,
+          () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
+          table.recentlyUpdatedRowQuery(latestRedshiftRow.lastUpdated),
+          1, 1, 1, r => table.getMappedRow(r)
+        )
+
+        val recentlyUpdatedDataFrame = sqlContext.createDataFrame(recentlyUpdated, table.getSchema())
+        RedShift.CopyFromDataFrame(recentlyUpdatedDataFrame, table.redshiftTable, s3Path + "/updated", table.redshiftKey, applicationId + "_staging_updated_")
+      }
     }
 
     tables.map(syncTable)
