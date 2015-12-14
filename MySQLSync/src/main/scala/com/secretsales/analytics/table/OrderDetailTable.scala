@@ -9,8 +9,9 @@ class OrderDetailTable extends Table {
   val mysqlKey = "order_detail_id"
   val redshiftTable = "order_details"
   val redshiftKey = "order_detail_id"
-  val batchSize = 100000
-  val partitions = batchSize/1000
+  val totalRecords: 100000
+  val batchSize: 1000
+  val partitions: totalRecords/batchSize
   val baseSelectQuery = "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added, od.updated_at FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku"
 
   def getSchema() : StructType ={
@@ -48,6 +49,6 @@ class OrderDetailTable extends Table {
   }
 
   def recentlyUpdatedRowQuery(lastUpdated: Timestamp): String = {
-    return baseSelectQuery + " WHERE ? = ? AND od.updated_at > '"+lastUpdated.toString+"' LIMIT 1000"
+    return baseSelectQuery + " WHERE ? = ? AND od.updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
   }
 }

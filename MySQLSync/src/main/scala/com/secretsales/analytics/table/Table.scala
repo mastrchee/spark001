@@ -15,8 +15,9 @@ trait Table extends java.io.Serializable {
   val mysqlKey : String
   val redshiftTable : String
   val redshiftKey : String
-  val batchSize: Int
-  val partitions: Int
+  val totalRecords: Long
+  val batchSize: Long
+  val partitions: Long
 
   /** Returns table schema */
   def getSchema() : StructType

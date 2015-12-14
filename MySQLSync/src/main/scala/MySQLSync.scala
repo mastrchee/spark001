@@ -46,7 +46,7 @@ object MySQLSync {
       val newRows = new JdbcRDD(sparkContext,
         () => DriverManager.getConnection(mysqlHost, mysqlUser, mysqlPassword),
         table.newRowQuery(),
-        latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.batchSize, table.partitions, r => table.getMappedRow(r)
+        latestRedshiftRow.lastId+1, latestRedshiftRow.lastId+table.totalRecords, table.partitions, r => table.getMappedRow(r)
       )
 
       // get recently updated rows
