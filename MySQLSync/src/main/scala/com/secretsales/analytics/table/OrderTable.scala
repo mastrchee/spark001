@@ -9,9 +9,9 @@ class OrderTable extends Table {
   val mysqlKey = "order_id"
   val redshiftTable = "orders"
   val redshiftKey = "order_id"
-  val totalRecords: 100000
-  val batchSize: 1000
-  val partitions: totalRecords/batchSize
+  val totalRecords = 100000
+  val batchSize = 1000
+  val partitions = totalRecords/batchSize
   val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
 
   def getSchema() : StructType ={

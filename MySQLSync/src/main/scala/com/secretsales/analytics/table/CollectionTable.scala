@@ -9,9 +9,9 @@ class CollectionTable extends Table {
   val mysqlKey = "id"
   val redshiftTable = "collections"
   val redshiftKey = "collection_id"
-  val totalRecords: 1000
-  val batchSize: 100
-  val partitions: totalRecords/batchSize
+  val totalRecords = 1000
+  val batchSize = 100
+  val partitions = totalRecords/batchSize
   val baseSelectQuery = "SELECT `id`, `name`, `created_at`, `updated_at` FROM collections"
 
   def getSchema() : StructType ={

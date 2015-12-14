@@ -7,7 +7,6 @@ import org.apache.spark.sql.types._
 import com.secretsales.analytics.database.RedShift
 import com.secretsales.analytics.retriever.redshift._
 import com.secretsales.analytics.table._
-import java.security.MessageDigest
 
 object MySQLSync {
   def main(args: Array[String]) {
