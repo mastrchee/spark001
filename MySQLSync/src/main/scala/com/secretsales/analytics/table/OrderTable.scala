@@ -12,7 +12,7 @@ class OrderTable extends Table {
   val totalRecords = 100000
   val batchSize = 1000
   val partitions = totalRecords/batchSize
-  val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at` FROM orders"
+  val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at`, `vat`, `vat_value` FROM orders"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -25,6 +25,8 @@ class OrderTable extends Table {
       StructField("delivery_price",FloatType,true),
       StructField("order_progress_id",IntegerType,true),
       StructField("payment_method",StringType,true),
+      StructField("vat",FloatType,true),
+      StructField("vat_value",FloatType,true),
       StructField("created",StringType,true),
       StructField("updated",StringType,true)
     ))
@@ -47,6 +49,8 @@ class OrderTable extends Table {
         case "AY" => "Adyen"
         case _    => "Other"
       },
+      r.getFloat("vat"),
+      r.getFloat("vat_value"),
       if (r.getString("added") == null) "" else r.getString("added"),
       if (r.getString("updated_at") == null) "" else r.getString("updated_at")
     )
