@@ -7,11 +7,10 @@ import java.sql.{ResultSet, Timestamp}
 class OrderRefundTable extends Table {
   val mysqlTable = "orders_refund"
   val mysqlKey = "id"
+  val mysqlUpdated = null
   val redshiftTable = "order_refunds"
   val redshiftKey = "order_refund_id"
-  val totalRecords = 100000
-  val batchSize = 1000
-  val partitions = totalRecords/batchSize
+  val redshiftUpdated = "updated"
   val baseSelectQuery = "SELECT `id`, `VendorTxCode`, `amount` , `reason`, `orderId`, `created` FROM orders_refund"
 
   def getSchema(): StructType = {

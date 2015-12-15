@@ -11,21 +11,20 @@ import java.sql.{ResultSet, Timestamp}
  * Table interface
  */
 trait Table extends java.io.Serializable {
-  val mysqlTable : String
-  val mysqlKey : String
-  val redshiftTable : String
-  val redshiftKey : String
-  val totalRecords: Int
-  val batchSize: Int // per query > per csv
-  val partitions: Int
+  val mysqlTable: String
+  val mysqlKey: String
+  val mysqlUpdated: String
+  val redshiftTable: String
+  val redshiftKey: String
+  val redshiftUpdated: String
 
   /** Returns table schema */
-  def getSchema() : StructType
+  def getSchema(): StructType
 
   /** Maps a ResultSet to a Row */
-  def getMappedRow(r : ResultSet) : Row
+  def getMappedRow(r: ResultSet): Row
 
-  def newRowQuery() : String
+  def newRowQuery(): String
 
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated : Timestamp) : String
+  def recentlyUpdatedRowQuery(latestId: Long, lastUpdated: Timestamp): String
 }

@@ -7,11 +7,10 @@ import java.sql.{ResultSet, Timestamp}
 class UserTable extends Table {
   val mysqlTable = "users"
   val mysqlKey = "user_id"
+  val mysqlUpdated = "last_updated"
   val redshiftTable = "users"
   val redshiftKey = "user_id"
-  val totalRecords = 100000
-  val batchSize = 1000
-  val partitions = totalRecords/batchSize
+  val redshiftUpdated = "updated"
   val baseSelectQuery = "SELECT user_id, gender, partnership, last_login, created, last_updated FROM users"
 
   def getSchema(): StructType = {
@@ -45,6 +44,6 @@ class UserTable extends Table {
   }
 
   def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND user_id <= "+latestId+" AND last_updated > '"+lastUpdated.toString+"' LIMIT "+batchSize
+    return baseSelectQuery +" WHERE ? = ? AND user_id <= "+latestId+" AND last_updated > '"+lastUpdated.toString+"'"
   }
 }

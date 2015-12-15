@@ -7,11 +7,10 @@ import java.sql.{ResultSet, Timestamp}
 class OrderTable extends Table {
   val mysqlTable = "orders"
   val mysqlKey = "order_id"
+  val mysqlUpdated = "updated_at"
   val redshiftTable = "orders"
   val redshiftKey = "order_id"
-  val totalRecords = 100000
-  val batchSize = 1000
-  val partitions = totalRecords/batchSize
+  val redshiftUpdated = "updated"
   val baseSelectQuery = "SELECT `order_id`, `discount`, `user_id`, `total_price`, `discountcode`, `delivery_method`, `delivery_price`, left(`VendorTxCode`, 2) as 'payment_method', `VendorTxCode`, `order_progress_id`, `added`, `updated_at`, `vat`, `vat_value` FROM orders"
 
   def getSchema() : StructType ={
@@ -61,6 +60,6 @@ class OrderTable extends Table {
   }
 
   def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND order_id <= "+latestId+" AND updated_at > '"+lastUpdated.toString+"' LIMIT "+batchSize
+    return baseSelectQuery +" WHERE ? = ? AND order_id <= "+latestId+" AND updated_at > '"+lastUpdated.toString+"'"
   }
 }
