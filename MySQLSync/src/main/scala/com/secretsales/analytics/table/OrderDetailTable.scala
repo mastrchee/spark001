@@ -11,7 +11,7 @@ class OrderDetailTable extends Table {
   val redshiftTable = "order_details"
   val redshiftKey = "order_detail_id"
   val redshiftUpdated = "updated"
-  val baseSelectQuery = "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added, od.updated_at FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku"
+  val baseSelectQuery = "SELECT od.order_detail_id, o.order_id, pc.sku, IFNULL(p.collection_id, 0) as 'collection_id', o.total_price, od.price, IFNULL(pc.cost_price, 0) as 'cost_price', o.discount, o.vat, o.vat_value, o.added, od.updated_at, o.delivery_price, (o.total_price - o.delivery_price) as total_price_without_delivery FROM order_details od INNER JOIN orders o ON o.order_id = od.order_id INNER JOIN products p ON p.id = od.product_id INNER JOIN product_options po ON (od.product_id =  po.product_id AND od.option_id = po.id) INNER JOIN product_collection pc ON pc.collection_id = p.collection_id AND pc.sku = po.sku"
 
   def getSchema() : StructType ={
     return StructType(Array(
@@ -36,7 +36,7 @@ class OrderDetailTable extends Table {
       r.getLong("collection_id"),
       r.getFloat("cost_price"),
       r.getFloat("price"),
-      if (r.getFloat("discount") > 0) (r.getFloat("price")/r.getFloat("total_price")).toFloat*r.getFloat("discount") else 0.0f, // disount per product (ternary check because of s**tty data)
+      if (r.getFloat("discount") > 0 && r.getFloat("total_price_without_delivery") > 0 ) (r.getFloat("price")/r.getFloat("total_price_without_delivery")).toFloat*r.getFloat("discount") else 0.0f, // disount per product (ternary check because of s**tty data)
       if (r.getFloat("vat") > 0 && r.getFloat("vat_value") > 0) (r.getFloat("price")/(100.0f+r.getFloat("vat"))) * r.getFloat("vat") else 0.0f, // vat_value per product (ternary check because of s**tty data)
       if (r.getString("added") == null) "" else r.getString("added"),
       if (r.getString("updated_at") == null) "" else r.getString("updated_at")
