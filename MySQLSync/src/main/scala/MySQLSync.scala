@@ -65,7 +65,7 @@ object MySQLSync {
 
       if (latestRedshiftRow.lastId != latestMysqlRow.lastId) {
         val records = (latestMysqlRow.lastId - latestRedshiftRow.lastId)
-        var maxRecords = 500000
+        var maxRecords = 100000
 
         if (records < maxRecords) {
           maxRecords = ((records - (records % batchLimit))).toInt + batchLimit
