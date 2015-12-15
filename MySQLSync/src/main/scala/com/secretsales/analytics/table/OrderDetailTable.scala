@@ -43,11 +43,11 @@ class OrderDetailTable extends Table {
     )
   }
 
-  def newRowQuery() : String = {
+  override def newRowQuery() : String = {
     return baseSelectQuery + " WHERE od.order_detail_id >= ? AND od.order_detail_id <= ?"
   }
 
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
+  override def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
     return baseSelectQuery + " WHERE ? = ? AND od.order_detail_id <= "+latestId+" AND od.updated_at > '"+lastUpdated.toString+"'"
   }
 }

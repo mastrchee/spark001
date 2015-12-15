@@ -7,7 +7,7 @@ import java.sql.{ResultSet, Timestamp}
 class OrderRefundTable extends Table {
   val mysqlTable = "orders_refund"
   val mysqlKey = "id"
-  val mysqlUpdated = null
+  val mysqlUpdated = "updated_at"
   val redshiftTable = "order_refunds"
   val redshiftKey = "order_refund_id"
   val redshiftUpdated = "updated"
@@ -35,13 +35,5 @@ class OrderRefundTable extends Table {
       r.getString("created"),
       "" //updated_at missing in mysql
     )
-  }
-
-  def newRowQuery(): String = {
-    return baseSelectQuery +" WHERE id >= ? AND id <= ?"
-  }
-
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return ""
   }
 }

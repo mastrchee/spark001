@@ -38,12 +38,4 @@ class UserTable extends Table {
       if (r.getString("last_updated") == null) "" else r.getString("last_updated")
     )
   }
-
-  def newRowQuery(): String = {
-    return baseSelectQuery +" WHERE user_id >= ? AND user_id <= ?"
-  }
-
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND user_id <= "+latestId+" AND last_updated > '"+lastUpdated.toString+"'"
-  }
 }

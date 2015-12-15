@@ -17,6 +17,7 @@ trait Table extends java.io.Serializable {
   val redshiftTable: String
   val redshiftKey: String
   val redshiftUpdated: String
+  val baseSelectQuery: String
 
   /** Returns table schema */
   def getSchema(): StructType
@@ -24,7 +25,11 @@ trait Table extends java.io.Serializable {
   /** Maps a ResultSet to a Row */
   def getMappedRow(r: ResultSet): Row
 
-  def newRowQuery(): String
+  def newRowQuery(): String = {
+    return baseSelectQuery +" WHERE " + mysqlKey + " >= ? AND " + mysqlKey + " <= ?"
+  }
 
-  def recentlyUpdatedRowQuery(latestId: Long, lastUpdated: Timestamp): String
+  def recentlyUpdatedRowQuery(latestId: Long, lastUpdated: Timestamp): String = {
+    return baseSelectQuery +" WHERE ? = ? AND " + mysqlKey + " <= " + latestId + " AND " + mysqlUpdated + " > '" + lastUpdated.toString + "'"
+  }
 }

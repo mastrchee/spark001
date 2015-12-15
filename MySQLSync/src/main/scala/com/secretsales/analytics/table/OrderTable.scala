@@ -54,12 +54,4 @@ class OrderTable extends Table {
       if (r.getString("updated_at") == null) "" else r.getString("updated_at")
     )
   }
-
-  def newRowQuery() : String = {
-    return baseSelectQuery +" WHERE order_id >= ? AND order_id <= ?"
-  }
-
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND order_id <= "+latestId+" AND updated_at > '"+lastUpdated.toString+"'"
-  }
 }

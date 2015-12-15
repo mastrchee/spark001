@@ -30,12 +30,4 @@ class CollectionTable extends Table {
       if (r.getString("updated_at") == null) "" else r.getString("updated_at")
     )
   }
-
-  def newRowQuery() : String = {
-    return baseSelectQuery +" WHERE id >= ? AND id <= ?"
-  }
-
-  def recentlyUpdatedRowQuery(latestId : Long, lastUpdated: Timestamp): String = {
-    return baseSelectQuery +" WHERE ? = ? AND id <= "+latestId+" AND updated_at > '"+lastUpdated.toString+"'"
-  }
 }

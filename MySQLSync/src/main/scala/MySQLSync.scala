@@ -65,15 +65,15 @@ object MySQLSync {
 
       if (latestRedshiftRow.lastId != latestMysqlRow.lastId) {
         val records = (latestMysqlRow.lastId - latestRedshiftRow.lastId)
-        var maxRecords = 100000
+        var maxRecords = 500000
 
         if (records < maxRecords) {
           maxRecords = ((records - (records % batchLimit))).toInt + batchLimit
         }
 
         val partitions = maxRecords/batchLimit
-        val lowerBound = latestRedshiftRow.lastId+1
-        val upperBound = lowerBound + maxRecords
+        val lowerBound = latestRedshiftRow.lastId + 1
+        val upperBound = latestRedshiftRow.lastId + maxRecords
 
         // get new rows
         val newRows = new JdbcRDD(sparkContext,
