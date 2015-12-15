@@ -36,7 +36,7 @@ class OrderTable extends Table {
       r.getLong("order_id"),
       r.getLong("user_id"),
       if (r.getString("VendorTxCode") == null) "" else r.getString("VendorTxCode"),
-      r.getFloat("total_price"),
+      r.getFloat("total_price") - r.getFloat("delivery_price"),
       r.getFloat("discount"),
       r.getString("discountcode"),
       r.getFloat("delivery_price"),
