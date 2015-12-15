@@ -18,8 +18,8 @@ class OrderRefundTable extends Table {
       StructField("order_refund_id",LongType,true),
       StructField("checkout_id",StringType,true),
       StructField("order_id",LongType,true),
-      StructField("amount",FloatType,true),
-      StructField("reason",StringType,true),
+      StructField("refund_amount",FloatType,true),
+      StructField("refund_reason",StringType,true),
       StructField("created",StringType,true),
       StructField("updated",StringType,true)
     ))

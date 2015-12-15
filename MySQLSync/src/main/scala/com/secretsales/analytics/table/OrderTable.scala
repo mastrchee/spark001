@@ -18,7 +18,7 @@ class OrderTable extends Table {
       StructField("order_id",LongType,true),
       StructField("user_id",LongType,true),
       StructField("checkout_id",StringType,true),
-      StructField("total_price",FloatType,true),
+      StructField("order_total",FloatType,true),
       StructField("discount",FloatType,true),
       StructField("discountcode",StringType,true),
       StructField("delivery_price",FloatType,true),
