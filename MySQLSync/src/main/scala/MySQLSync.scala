@@ -38,8 +38,8 @@ object MySQLSync {
 
     // mapper function
     def syncTable (table: Table) {
-      var s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
-      var RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
+      val s3Path = "secretsales-analytics/RedShift/Load/"+table.mysqlTable+"/"+applicationId
+      val RedShift = new RedShift(redshiftHost, redshiftUser, redshiftPassword, awsKey, awsSecret)
 
       // get the latest rows in redshift
       val redshiftLatestRowRetriever = new LatestRowRetriever(sqlContext, redshiftHost, redshiftUser, redshiftPassword, "redshift")
